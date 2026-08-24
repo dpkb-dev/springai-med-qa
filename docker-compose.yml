@@ -1,10 +1,19 @@
-# Local development stack.
+# Local development and single-host deployment stack.
 #
-# D13 introduces the Redis Stack node only: it backs BOTH the conversation memory cache
-# (med:chat:{tenant}:{dept}:{session}) and the RediSearch vector index used by the Spring AI
-# RedisVectorStore (med:doc:* keys). MySQL and the application service are added in D28.
+# D13 introduced the Redis Stack node only: it backs BOTH the conversation memory
+# cache (med:chat:{tenant}:{dept}:{session}) and the RediSearch vector index used by
+# the Spring AI RedisVectorStore (med:doc:* keys).
 #
-# Usage: docker compose up -d redis-stack
+# D28 completes the stack: a MySQL 8 node (persistent, health-checked, schema/user
+# provisioned by docker/mysql/init/01-create-db.sql) and the application service, which
+# is built from the D27 multi-stage Dockerfile and waits for BOTH MySQL and Redis to be
+# healthy before it starts. Flyway (V1..V3) then owns the in-database schema (tables),
+# while the init script only provisions the database and the least-privilege account.
+#
+# Usage:
+#   docker compose up -d            # full stack
+#   docker compose up -d redis-stack   # cache/index only, for offline dev
+
 name: springai-med-qa
 
 services:
@@ -29,5 +38,79 @@ services:
       start_period: 20s
     restart: unless-stopped
 
+  mysql:
+    # MySQL 8 is the source of truth for the sharded med_message_{0..15} tables and the
+    # single med_session / med_audit_log tables (routed by ShardingSphere). The init
+    # script (mounted below) creates the med_qa schema and the med_qa account; Flyway
+    # then owns the tables on top of that schema.
+    image: mysql:8.0.36
+    container_name: med-qa-mysql
+    command:
+      # utf8mb4 everywhere so clinical text and UUIDv7 keys sort/store correctly.
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      # Only the root secret is set here; the application database and account are
+      # provisioned idempotently by docker/mysql/init/01-create-db.sql on first boot.
+      MYSQL_ROOT_PASSWORD: ${MED_MYSQL_ROOT_PASSWORD:med_qa_root}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # mysqladmin ping returns 0 only once the server accepts connections.
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+
+  app:
+    # Built from the D27 multi-stage Dockerfile (JDK builder -> layered JRE runtime).
+    # The container runs as the unprivileged `medqa` user and waits for both backing
+    # stores to report healthy before it boots, so Flyway / Redis index creation never
+    # races a not-yet-ready dependency.
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: springai-med-qa:local
+    container_name: med-qa-app
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis-stack:
+        condition: service_healthy
+    environment:
+      # Active profile selects the prod-tuned wiring (lazy model beans, offline-safe).
+      SPRING_PROFILES_ACTIVE: prod
+      # MySQL connection (consumed by sharding/med-sharding.yaml placeholders).
+      MED_MYSQL_HOST: mysql
+      MED_MYSQL_PORT: "3306"
+      MED_MYSQL_DATABASE: med_qa
+      MED_MYSQL_USERNAME: med_qa
+      MED_MYSQL_PASSWORD: med_qa
+      # Redis connection (cache + Redisson + vector store).
+      REDIS_HOST: redis-stack
+      REDIS_PORT: "6379"
+      # Local compose ships with auth off so the stack is runnable out of the box;
+      # production overlays mount real API keys and set MED_SECURITY_ENABLED=true.
+      MED_SECURITY_ENABLED: "false"
+      MED_SECURITY_DEPT_SCOPE_ENABLED: "false"
+      MED_RATE_LIMIT_ENABLED: "false"
+    ports:
+      - "8080:8080"
+    healthcheck:
+      # Spring Boot actuator/health is exposed via management.endpoint.health; a 200
+      # from curl proves the context finished booting (Flyway, Redis index, etc.).
+      test: ["CMD-SHELL", "curl -f -s http://127.0.0.1:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
 volumes:
   redis-stack-data:
+  mysql-data:
