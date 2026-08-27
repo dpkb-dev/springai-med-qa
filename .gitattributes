@@ -2,6 +2,12 @@
 *.sh text eol=lf
 mvnw text eol=lf
 *.cmd text eol=crlf
+# D27 leftover fix: guarantee the Dockerfile and CI workflow files are checked out
+# with LF endings so the BuildKit parser never chokes on CRLF from a Windows checkout.
+Dockerfile text eol=lf
+.github/workflows/* text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
 # Binary files never transform
 *.jar binary
 *.png binary
