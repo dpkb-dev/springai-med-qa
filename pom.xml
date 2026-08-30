@@ -30,6 +30,13 @@
         <spring-ai.version>1.0.0</spring-ai.version>
         <hutool.version>5.8.37</hutool.version>
         <!--
+            Testcontainers (D30 integration tests): spins up a real MySQL + Redis Stack so the
+            storage and lock chain is exercised against genuine middleware. The boot BOM does not
+            manage Testcontainers, hence the explicit BOM import below. 1.20.x is the GA line that
+            targets Java 17 and is compatible with the JUnit 5.11.x shipped by Boot 3.4.
+        -->
+        <testcontainers.version>1.20.6</testcontainers.version>
+        <!--
             SpringDoc OpenAPI 2.8.x is the GA line that supports Spring Boot 3.4 / Spring Framework
             6.2. Earlier 2.5.x releases break at runtime with a NoSuchMethodError on
             ControllerAdviceBean, so 2.8.x is the only safe choice for this stack. The Boot BOM does
@@ -49,6 +56,17 @@
                 <groupId>org.springframework.ai</groupId>
                 <artifactId>spring-ai-bom</artifactId>
                 <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!--
+                Testcontainers BOM pins the testcontainers / junit-jupiter / mysql modules to one GA
+                version so the integration tests (D30) need no per-artifact version strings.
+            -->
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -209,6 +227,28 @@
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-core</artifactId>
             <version>${hutool.version}</version>
+        </dependency>
+
+        <!--
+            Integration tests (D30) only. Testcontainers boots a real MySQL + Redis Stack so the
+            storage and lock chain runs against genuine middleware; the suite is gated by a Docker
+            availability condition, so `mvn test` stays green on machines without a Docker daemon.
+            All three modules are version-managed by the Testcontainers BOM imported above.
+        -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mysql</artifactId>
+            <scope>test</scope>
         </dependency>
 
         <!--

@@ -1,0 +1,48 @@
+# Integration-test mirror of src/main/resources/sharding/med-sharding.yaml.
+#
+# The sharding rules (16 actual data nodes, session_id sharding column, MED_CRC32_MOD algorithm) and
+# the SINGLE rule for med_session / med_audit_log are byte-for-byte identical to production. Only the
+# underlying data source is swapped: MedStorageAndLockIntegrationTest reads this file, substitutes the
+# $${MED_MYSQL_*} placeholders with the connection details of a Testcontainers MySQL instance, and
+# points ShardingSphere at the resolved copy (placeholder-type=none), so the storage chain runs against
+# genuine MySQL without any change to the routing logic.
+
+databaseName: med_qa
+
+dataSources:
+  med_ds:
+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    jdbcUrl: jdbc:mysql://$${MED_MYSQL_HOST::127.0.0.1}:$${MED_MYSQL_PORT::3306}/$${MED_MYSQL_DATABASE::med_qa}?useUnicode=true&characterEncoding=utf8mb4&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&rewriteBatchedStatements=true
+    username: $${MED_MYSQL_USERNAME::med_qa}
+    password: $${MED_MYSQL_PASSWORD::med_qa}
+    minimumIdle: 4
+    maximumPoolSize: 32
+    connectionTimeout: 5000
+    idleTimeout: 60000
+    maxLifetime: 1800000
+
+rules:
+  - !SHARDING
+    tables:
+      med_message:
+        actualDataNodes: med_ds.med_message_${0..15}
+        tableStrategy:
+          standard:
+            shardingColumn: session_id
+            shardingAlgorithmName: med_message_crc32_mod
+    shardingAlgorithms:
+      med_message_crc32_mod:
+        type: MED_CRC32_MOD
+        props:
+          sharding-count: 16
+
+  - !SINGLE
+    tables:
+      - med_ds.med_session
+      - med_ds.med_audit_log
+    defaultDataSource: med_ds
+
+props:
+  sql-show: false
+  sql-simple: false
