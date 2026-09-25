@@ -118,12 +118,31 @@ public class MedSpringAiChatMemoryRepository implements ChatMemoryRepository {
             throw new IllegalArgumentException("messages must not be null");
         }
         SessionCoordinate coord = SessionCoordinate.parse(conversationId);
+        String sessionPatientId = resolveSessionPatientId(messages);
         List<ChatMessageDO> entities = new ArrayList<>(messages.size());
         for (Message message : messages) {
-            entities.add(toChatMessageDO(message, coord));
+            entities.add(toChatMessageDO(message, coord, sessionPatientId));
         }
         repository.deleteSession(coord.tenantId(), coord.deptId(), coord.sessionId());
         repository.appendAll(entities);
+    }
+
+    /**
+     * Finds the patientId carried by any message in this batch — typically the patient's own
+     * turn — so it can be propagated onto sibling messages (like the assistant's freshly
+     * generated reply) that carry no metadata of their own.
+     */
+    private static String resolveSessionPatientId(List<Message> messages) {
+        for (Message message : messages) {
+            Map<String, Object> metadata = message.getMetadata();
+            if (metadata != null) {
+                String patientId = asString(metadata.get(MED_PATIENT_ID));
+                if (patientId != null && !patientId.isBlank()) {
+                    return patientId;
+                }
+            }
+        }
+        return null;
     }
 
     /**
@@ -171,7 +190,7 @@ public class MedSpringAiChatMemoryRepository implements ChatMemoryRepository {
      * @param coord   the owning session coordinate
      * @return the equivalent {@link ChatMessageDO}
      */
-    static ChatMessageDO toChatMessageDO(Message message, SessionCoordinate coord) {
+    static ChatMessageDO toChatMessageDO(Message message, SessionCoordinate coord, String fallbackPatientId) {
         Map<String, Object> metadata = message.getMetadata() == null
                 ? Collections.emptyMap() : message.getMetadata();
         String messageId = asString(metadata.get(MED_MESSAGE_ID));
@@ -181,6 +200,9 @@ public class MedSpringAiChatMemoryRepository implements ChatMemoryRepository {
         RoleType role = resolveRole(message);
         long createdAt = parseLong(metadata.get(MED_CREATED_AT), System.currentTimeMillis());
         String patientId = asString(metadata.get(MED_PATIENT_ID));
+        if (patientId == null || patientId.isBlank()) {
+            patientId = fallbackPatientId;              // ← NEW: fall back to the session-level value
+        }
         ChatMessageDO.Builder builder = ChatMessageDO.builder()
                 .messageId(messageId)
                 .sessionId(coord.sessionId())

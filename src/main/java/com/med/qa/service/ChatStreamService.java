@@ -12,10 +12,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Orchestrates one streaming consultation turn.
@@ -88,14 +92,20 @@ public class ChatStreamService {
 
         Advisor ragAdvisor = ragAdvisorFactory.createAdvisor(query);
         log.debug("streaming consultation for session {}", coordinate.toConversationId());
+        // NEW — build metadata carrying patientId, so it survives into the saved message
+        Map<String, Object> userMetadata = new LinkedHashMap<>();
+        if (request.patientId() != null && !request.patientId().isBlank()) {
+            userMetadata.put("med.patientId", request.patientId());
+        }
         return chatClient.prompt()
-                .user(request.message())
+                .messages(UserMessage.builder().text(request.message()).metadata(userMetadata).build())
                 .advisors(advisorSpec ->
                         advisorSpec.param(ChatMemory.CONVERSATION_ID, coordinate.toConversationId()))
                 .advisors(ragAdvisor)
                 .stream()
                 .content();
     }
+
 
     /**
      * Resolves the RAG isolation scope from the request.
