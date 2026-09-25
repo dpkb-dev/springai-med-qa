@@ -25,13 +25,19 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * auto-configuration stays off, the project beans stay lazy, and a missing key surfaces as a
  * precise message on first use rather than as a context startup failure.</p>
  *
- * <p>The API key is explicitly blanked so the assertions do not depend on the developer's
- * environment variables.</p>
+ * <p>The embedding API key is explicitly blanked so the assertions do not depend on the developer's
+ * environment variables. {@code spring.ai.model.chat=none} is also set explicitly: this project's
+ * {@code application-dev.yml} enables the real chat model (needed for the actual chat/RAG feature),
+ * and since {@code dev} is the application's default active profile, the chat model is no longer off
+ * by default the way this class's own design originally assumed — leaving it enabled here would make
+ * an unrelated, eagerly-instantiated {@code OpenAiChatModel} fail on the same blanked key, for a bean
+ * this test was never actually trying to exercise.</p>
  */
 @SpringBootTest
 @TestPropertySource(properties = {
         "spring.flyway.enabled=false",
-        "spring.ai.openai.api-key="
+        "spring.ai.openai.api-key=",
+        "spring.ai.model.chat=none"
 })
 class EmbeddingModelContextTest {
 
