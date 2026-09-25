@@ -129,6 +129,20 @@ public class OpenApiConfig {
                 .build();
     }
 
+    /**
+     * Swagger UI group for the claims assessment endpoints.
+     *
+     * @param props the openapi configuration, must not be {@code null}
+     * @return the claims group, never {@code null}
+     */
+    @Bean
+    public GroupedOpenApi claimsApiGroup(MedOpenApiProperties props) {
+        return GroupedOpenApi.builder()
+                .group("claims")
+                .pathsToMatch(toArray(props.getClaimsGroupPaths()))
+                .build();
+    }
+
     private static String[] toArray(List<String> paths) {
         return paths.toArray(new String[0]);
     }

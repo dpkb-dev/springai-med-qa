@@ -46,6 +46,7 @@ public class MedOpenApiProperties {
     private List<String> chatGroupPaths = defaultChatPaths();
     private List<String> sessionGroupPaths = defaultSessionPaths();
     private List<String> ragGroupPaths = defaultRagPaths();
+    private List<String> claimsGroupPaths = defaultClaimsPaths();
 
     private static List<String> defaultChatPaths() {
         return List.of("/api/chat/**");
@@ -57,6 +58,10 @@ public class MedOpenApiProperties {
 
     private static List<String> defaultRagPaths() {
         return List.of("/api/rag/**");
+    }
+
+    private static List<String> defaultClaimsPaths() {
+        return List.of("/api/claims/**");
     }
 
     /**
@@ -171,5 +176,13 @@ public class MedOpenApiProperties {
 
     public void setRagGroupPaths(List<String> paths) {
         this.ragGroupPaths = (paths == null || paths.isEmpty()) ? defaultRagPaths() : paths;
+    }
+
+    public List<String> getClaimsGroupPaths() {
+        return claimsGroupPaths;
+    }
+
+    public void setClaimsGroupPaths(List<String> paths) {
+        this.claimsGroupPaths = (paths == null || paths.isEmpty()) ? defaultClaimsPaths() : paths;
     }
 }
