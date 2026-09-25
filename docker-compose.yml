@@ -52,7 +52,7 @@ services:
     environment:
       # Only the root secret is set here; the application database and account are
       # provisioned idempotently by docker/mysql/init/01-create-db.sql on first boot.
-      MYSQL_ROOT_PASSWORD: ${MED_MYSQL_ROOT_PASSWORD:med_qa_root}
+      MYSQL_ROOT_PASSWORD: ${MED_MYSQL_ROOT_PASSWORD:-med_qa_root}
     ports:
       - "3306:3306"
     volumes:

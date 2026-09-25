@@ -9,3 +9,34 @@ management:
 logging:
   level:
     com.med.qa: DEBUG
+
+
+med:
+  security:
+    keys:
+      dev-key-123:
+        tenant-id: hospital-1
+        dept-id: cardiology
+        role: STAFF
+
+
+
+    rag:
+      advisor:
+        prompt-template: |
+          You are a careful hospital consultation assistant. Answer the user's question using ONLY
+          the reference material below — do not make anything up.
+          If the reference material has no relevant information, clearly say you cannot answer.
+
+          [Reference Material]
+          ---------------------
+          {question_answer_context}
+          ---------------------
+
+          User question: {query}      
+
+
+spring:
+  ai:
+    model:
+      chat: openai

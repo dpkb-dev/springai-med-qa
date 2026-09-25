@@ -48,3 +48,38 @@ logs/
 *.local
 .env
 application-local.yml
+# Added by code-review-graph
+.code-review-graph/
+
+
+
+# AI coding assistant artifacts - local only, never committed
+.claude/
+.codeboarding/
+.codebuddy/
+.cursor/
+.cursorrules
+.gemini/
+.github/instructions/
+.kiro/
+.mcp.json
+.qoder/
+.windsurfrules
+AGENTS.md
+CLAUDE.md
+CODEBUDDY.md
+GEMINI.md
+QODER.md
+cb_to_mermaid.py
+opencode.jsonc
+skills-lock.json
+
+# Personal working notes - not project documentation
+*-notes-and-architecture*.md
+*-e2e-sequence.mermaid
+*-e2e-blueprint.md
+code_expln.md
+proj_expln.md
+testcases_guides.md
+pasted-content-*.md
+Med-QA Architecture Atlas.html

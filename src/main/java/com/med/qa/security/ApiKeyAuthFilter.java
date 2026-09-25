@@ -70,7 +70,9 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter implements Ordered {
             return true;
         }
         String path = request.getServletPath();
-        return path.startsWith("/actuator");
+        return path.startsWith("/actuator")
+                || path.startsWith("/swagger-ui")
+                || path.startsWith("/v3/api-docs");
     }
 
     @Override
