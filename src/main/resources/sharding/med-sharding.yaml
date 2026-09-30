@@ -46,6 +46,7 @@ rules:
     tables:
       - med_ds.med_session
       - med_ds.med_audit_log
+      - med_ds.med_declared_condition
     defaultDataSource: med_ds
 
 props:

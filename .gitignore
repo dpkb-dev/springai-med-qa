@@ -83,3 +83,9 @@ proj_expln.md
 testcases_guides.md
 pasted-content-*.md
 Med-QA Architecture Atlas.html
+
+# Working notes and diagrams from the design sessions
+*.mermaid
+ped-*.md
+claims-endpoint-reference.md
+medication-safety-and-eligibility-blueprint*.md
