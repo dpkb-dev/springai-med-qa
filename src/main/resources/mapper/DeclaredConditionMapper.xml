@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.med.qa.mapper.DeclaredConditionMapper">
+
+    <resultMap id="DeclaredConditionResultMap" type="com.med.qa.domain.entity.DeclaredConditionDO">
+        <id column="declaration_id" property="declarationId"/>
+        <result column="policy_id" property="policyId"/>
+        <result column="condition_code" property="conditionCode"/>
+        <result column="declared_on" property="declaredOn"/>
+        <result column="waiting_period_months" property="waitingPeriodMonths"/>
+        <result column="permanently_excluded" property="permanentlyExcluded"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <sql id="allColumns">
+        declaration_id, policy_id, condition_code, declared_on,
+        waiting_period_months, permanently_excluded, created_at
+    </sql>
+
+    <insert id="insert" parameterType="com.med.qa.domain.entity.DeclaredConditionDO"
+            useGeneratedKeys="false">
+        INSERT INTO med_declared_condition (
+            declaration_id, policy_id, condition_code, declared_on,
+            waiting_period_months, permanently_excluded, created_at
+        ) VALUES (
+            #{declarationId}, #{policyId}, #{conditionCode}, #{declaredOn},
+            #{waitingPeriodMonths}, #{permanentlyExcluded}, #{createdAt}
+        )
+    </insert>
+
+    <select id="selectByPolicyAndCondition" resultMap="DeclaredConditionResultMap">
+        SELECT <include refid="allColumns"/>
+        FROM med_declared_condition
+        WHERE policy_id = #{policyId}
+          AND condition_code = #{conditionCode}
+    </select>
+
+    <select id="selectAllByPolicy" resultMap="DeclaredConditionResultMap">
+        SELECT <include refid="allColumns"/>
+        FROM med_declared_condition
+        WHERE policy_id = #{policyId}
+        ORDER BY declared_on ASC
+    </select>
+
+</mapper>
