@@ -47,6 +47,7 @@ public class MedOpenApiProperties {
     private List<String> sessionGroupPaths = defaultSessionPaths();
     private List<String> ragGroupPaths = defaultRagPaths();
     private List<String> claimsGroupPaths = defaultClaimsPaths();
+    private List<String> policyGroupPaths = defaultPolicyPaths();
 
     private static List<String> defaultChatPaths() {
         return List.of("/api/chat/**");
@@ -63,6 +64,11 @@ public class MedOpenApiProperties {
     private static List<String> defaultClaimsPaths() {
         return List.of("/api/claims/**");
     }
+
+    private static List<String> defaultPolicyPaths() {
+        return List.of("/api/policy/**");
+    }
+
 
     /**
      * Creates the properties with their safe defaults.
@@ -184,5 +190,12 @@ public class MedOpenApiProperties {
 
     public void setClaimsGroupPaths(List<String> paths) {
         this.claimsGroupPaths = (paths == null || paths.isEmpty()) ? defaultClaimsPaths() : paths;
+    }
+    public List<String> getPolicyGroupPaths() {
+        return policyGroupPaths;
+    }
+
+    public void setPolicyGroupPaths(List<String> paths) {
+        this.policyGroupPaths = (paths == null || paths.isEmpty()) ? defaultPolicyPaths() : paths;
     }
 }
