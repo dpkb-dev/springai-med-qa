@@ -33,6 +33,14 @@ public class LlmClinicalFactExtractor implements ClinicalFactExtractor {
 
     private static final Logger log = LoggerFactory.getLogger(LlmClinicalFactExtractor.class);
 
+    /**
+     * Appended to {@code extractionNote} when the returned excerpt cannot be found in the report, so
+     * a clinician reading the findings knows the excerpt cannot be relied on for verification.
+     */
+    static final String EXCERPT_NOT_VERBATIM_NOTE =
+            "WARNING: the quoted source excerpt could not be found verbatim in the submitted report. "
+                    + "Verify these findings against the original document directly.";
+
     private static final String PROMPT_TEMPLATE = """
             You are a clinical report transcription assistant. Your ONLY job is to extract the facts
             that the report below explicitly states.
@@ -99,11 +107,56 @@ public class LlmClinicalFactExtractor implements ClinicalFactExtractor {
                 return new ClinicalFindings(report.reportType(), List.of(), "",
                         "The model did not return a usable extraction for this report.");
             }
-            return findings;
+            return verifyExcerpt(findings, report);
         } catch (RuntimeException ex) {
             log.error("fact extraction failed for report type {}", report.reportType(), ex);
             throw new BizException(ErrorCode.LLM_SERVICE_ERROR,
                     "failed to extract facts from the " + report.reportType() + " report", ex);
         }
+    }
+
+    /**
+     * Confirms the excerpt the model returned actually appears in the report it was given.
+     *
+     * <p>The prompt asks the model to quote the source passage, but asking is not the same as
+     * knowing. {@code sourceExcerpt} is the clinician's audit trail — it is what lets them check an
+     * extracted finding against the original without re-reading the whole report — so an excerpt
+     * that was paraphrased, or invented outright, silently breaks the verification step it exists to
+     * enable. A model that quotes correctly on nine reports and paraphrases on the tenth is the
+     * dangerous case, because nothing in the output would look different.</p>
+     *
+     * <p>Whitespace is normalised before comparison, since a model reflowing line breaks from a
+     * report is a formatting difference rather than a fabrication. When the excerpt genuinely does
+     * not appear, the finding is returned with a warning appended to {@code extractionNote} rather
+     * than discarded: the stated findings may still be accurate, and a clinician who is told the
+     * excerpt is unreliable can judge that for themselves. Silently dropping the excerpt would hide
+     * the problem instead of surfacing it.</p>
+     *
+     * @param findings the model's extraction
+     * @param report   the report it was given
+     * @return the findings unchanged when the excerpt is verbatim, or with a warning note appended
+     */
+    private ClinicalFindings verifyExcerpt(ClinicalFindings findings, ClinicalReport report) {
+        String excerpt = findings.sourceExcerpt();
+        if (excerpt == null || excerpt.isBlank()) {
+            return findings;
+        }
+        if (normaliseWhitespace(report.text()).contains(normaliseWhitespace(excerpt))) {
+            return findings;
+        }
+
+        log.warn("sourceExcerpt for report type {} does not appear verbatim in the submitted report",
+                report.reportType());
+
+        String note = findings.extractionNote() == null || findings.extractionNote().isBlank()
+                ? EXCERPT_NOT_VERBATIM_NOTE
+                : findings.extractionNote() + " " + EXCERPT_NOT_VERBATIM_NOTE;
+
+        return new ClinicalFindings(
+                findings.reportType(), findings.statedFindings(), findings.sourceExcerpt(), note);
+    }
+
+    private static String normaliseWhitespace(String text) {
+        return text == null ? "" : text.replaceAll("\\s+", " ").trim();
     }
 }
