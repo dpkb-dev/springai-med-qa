@@ -149,6 +149,13 @@ public class OpenApiConfig {
                 .pathsToMatch(toArray(props.getPolicyGroupPaths()))
                 .build();
     }
+    @Bean
+    public GroupedOpenApi consultApiGroup(MedOpenApiProperties props) {
+        return GroupedOpenApi.builder()
+                .group("consult")
+                .pathsToMatch(toArray(props.getConsultGroupPaths()))
+                .build();
+    }
 
     private static String[] toArray(List<String> paths) {
         return paths.toArray(new String[0]);
